@@ -1,6 +1,6 @@
 # Smooth Camera AutoCenter
 
-Multi-mode smooth external camera for **Nuclear Option** (BepInEx). Replaces legacy `com.alex.smoothcenter`.
+Multi-mode smooth external camera for **Nuclear Option** (BepInEx).
 
 **Version:** 1.0.0 Build PR-R2SP1  
 **BepInEx GUID:** `com.at747.smoothcamera`
@@ -36,7 +36,3 @@ msbuild SmoothCamera_Engine\SmoothCamera_Engine.csproj /p:Configuration=Release
 ```
 
 Output: `SmoothCamera_Engine\bin\Release\SmoothCamera_Engine.dll`
-
-## Migration
-
-Disable `com.alex.smoothcenter` before enabling this mod. Both plugins conflict on orbit camera hooks.
