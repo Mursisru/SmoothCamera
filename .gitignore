@@ -1,0 +1,5 @@
+**/bin/
+**/obj/
+**/_video_frames/
+*.user
+Directory.Build.user.props
