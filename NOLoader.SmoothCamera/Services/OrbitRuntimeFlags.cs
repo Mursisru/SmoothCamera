@@ -11,6 +11,7 @@ namespace NOLoader.SmoothCamera.Services
         internal static bool DynamicFramingActive;
         internal static bool CombatFollowActive;
         internal static bool HudCompensationActive;
+        internal static bool VisibilityFramingActive;
         internal static float HeightScale = 1f;
 
         internal static void Refresh()
@@ -25,9 +26,11 @@ namespace NOLoader.SmoothCamera.Services
                 && DynamicFramingActive
                 && !CombatFollowActive;
 
+            VisibilityFramingActive = SmoothCameraConfigCache.OrbitVisibilityFramingEnabled;
+
             OrbitPostMotionActive = SmoothCameraConfigCache.Enabled
                 && SmoothCameraConfigCache.Orbit.Enabled
-                && (CombatFollowActive || DynamicFramingActive || HeightScaleActive);
+                && (CombatFollowActive || DynamicFramingActive || HeightScaleActive || VisibilityFramingActive);
         }
     }
 }

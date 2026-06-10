@@ -7,8 +7,8 @@
     <AssemblyName>NOLoader.SmoothCamera</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\NOLoader_Engine\src\NOLoader.API\NOLoader.API.csproj" />
-    <ProjectReference Include="..\..\NOLoader_Engine\DEV.SDK\shared\NOLoader.ModConfig\NOLoader.ModConfig.csproj" />
+    <ProjectReference Include="..\..\..\src\NOLoader.API\NOLoader.API.csproj" />
+    <ProjectReference Include="..\..\shared\NOLoader.ModConfig\NOLoader.ModConfig.csproj" />
     <Reference Include="Assembly-CSharp">
       <HintPath>$(NuclearOptionRoot)\NuclearOption_Data\Managed\Assembly-CSharp.dll</HintPath>
       <Private>false</Private>

@@ -6,6 +6,10 @@ namespace NOLoader.SmoothCamera.Services
     {
         internal float PrevPitch;
         internal bool PitchInitialized;
+        internal float LastPitchRate;
+        internal float SmoothedPitchRate;
+        internal float SmoothedOrbitDistance;
+        internal bool OrbitDistanceInitialized;
         internal float SmoothedTargetDrive;
         internal float SmoothedAppliedDrive;
     }
@@ -18,7 +22,12 @@ namespace NOLoader.SmoothCamera.Services
         private const float MaxDriveFactor = 1.65f;
         private const float PitchRateDampReference = 55f;
         private const float PitchRateDampMax = 0.85f;
+        private const float ManeuverRateReference = 55f;
+        private const float ManeuverMinScale = 0.25f;
         private const float CruiseAppliedRateScale = 0.65f;
+        private const float PitchRateFilterHz = 14f;
+        private const float OrbitDistanceSmoothHz = 7f;
+        private const float MaxSmoothDeltaTime = 1f / 45f;
 
         private static float _targetFollowRateCached = 9f;
         private static float _appliedFollowRateCached = 1.5f;
@@ -32,6 +41,49 @@ namespace NOLoader.SmoothCamera.Services
             _appliedFollowRateCached = SmoothCameraConfigCache.OrbitAppliedFramingFollowRate;
         }
 
+        internal static float StableDeltaTime(float dt)
+            => Mathf.Clamp(dt, 1e-4f, MaxSmoothDeltaTime);
+
+        internal static void RefreshPitchRate(OrbitFramingState state, Transform body, float dt)
+        {
+            if (body == null)
+                return;
+
+            float stableDt = StableDeltaTime(dt);
+            float pitch = MeasurePitchDegrees(body);
+            if (!state.PitchInitialized)
+            {
+                state.PrevPitch = pitch;
+                state.PitchInitialized = true;
+                state.LastPitchRate = 0f;
+                state.SmoothedPitchRate = 0f;
+                return;
+            }
+
+            float rawRate = (pitch - state.PrevPitch) / stableDt;
+            float filterT = 1f - Mathf.Exp(-PitchRateFilterHz * stableDt);
+            state.SmoothedPitchRate += (rawRate - state.SmoothedPitchRate) * filterT;
+            state.LastPitchRate = state.SmoothedPitchRate;
+            state.PrevPitch = pitch;
+        }
+
+        internal static void RefreshOrbitDistance(OrbitFramingState state, CameraStateManager cam, float dt)
+        {
+            if (cam == null || cam.cameraPivot == null)
+                return;
+
+            float rawDist = (cam.transform.position - cam.cameraPivot.position).magnitude;
+            if (!state.OrbitDistanceInitialized)
+            {
+                state.SmoothedOrbitDistance = rawDist;
+                state.OrbitDistanceInitialized = true;
+                return;
+            }
+
+            float t = 1f - Mathf.Exp(-OrbitDistanceSmoothHz * StableDeltaTime(dt));
+            state.SmoothedOrbitDistance = Mathf.Lerp(state.SmoothedOrbitDistance, rawDist, t);
+        }
+
         internal static void UpdateSmooth(OrbitFramingState state, Transform body, float gunWeight, float dt)
         {
             float strength = SmoothCameraConfigCache.OrbitDynamicFramingStrength;
@@ -42,92 +94,122 @@ namespace NOLoader.SmoothCamera.Services
                 return;
             }
 
-            float pitch = MeasurePitchDegrees(body);
-            if (!state.PitchInitialized)
-            {
-                state.PrevPitch = pitch;
-                state.PitchInitialized = true;
-            }
-
-            float pitchRate = dt > 1e-5f ? (pitch - state.PrevPitch) / dt : 0f;
-            state.PrevPitch = pitch;
+            float pitch = state.PrevPitch;
+            float pitchRate = state.LastPitchRate;
 
             float absPitch = Mathf.Abs(pitch);
             float pitchNorm = Mathf.Clamp01(absPitch / 90f);
-            float pitchSign = ResolveSign(pitch, pitchRate);
-
-            float attitudeDrive = pitchNorm * pitchSign * strength;
-            float attitudeScale = 0.3f + 0.7f * pitchNorm;
-            float rateNorm = Mathf.Clamp(Mathf.Abs(pitchRate) / RateReferenceDegPerSec, 0f, 1.25f);
-            float rateSign = Mathf.Abs(pitchRate) > 1f ? Mathf.Sign(pitchRate) : pitchSign;
-            float rateDrive = rateNorm * rateSign * attitudeScale * strength;
+            float signedPitchNorm = Mathf.Clamp(pitch / 90f, -1f, 1f);
 
             float absRate = Mathf.Abs(pitchRate);
             float rateScale = 1f - Mathf.Clamp(absRate / PitchRateDampReference, 0f, PitchRateDampMax);
-            rateDrive *= rateScale;
+            bool crossingZero = absPitch < 14f && absRate > 18f;
 
-            float targetDrive = attitudeDrive + rateDrive * RateBlendWeight;
+            float attitudeDrive = signedPitchNorm * pitchNorm * strength * rateScale;
+            float attitudeScale = 0.3f + 0.7f * pitchNorm;
+            float rateNorm = Mathf.Clamp(pitchRate / RateReferenceDegPerSec, -1.25f, 1.25f);
+            float rateDrive = rateNorm * attitudeScale * strength * rateScale;
+
+            float blendWeight = absRate > 30f
+                ? Mathf.Lerp(0.4f, RateBlendWeight, rateScale)
+                : RateBlendWeight;
+            if (crossingZero)
+                blendWeight *= 0.45f;
+
+            float targetDrive = attitudeDrive + rateDrive * blendWeight;
             float maxDrive = MaxDriveFactor * strength;
             targetDrive = Mathf.Clamp(targetDrive, -maxDrive, maxDrive);
 
             float framingBlend = 1f - Mathf.SmoothStep(0f, 1f, gunWeight) * 0.85f;
             targetDrive *= framingBlend;
 
-            float targetRate = _targetFollowRateCached;
-            targetRate *= rateScale;
+            float targetRate = _targetFollowRateCached * rateScale;
 
             float appliedRate = _appliedFollowRateCached;
-            appliedRate *= rateScale;
-            if (gunWeight < 0.3f)
+            if (crossingZero)
+                appliedRate *= 0.55f;
+            else if (absRate > 22f)
+                appliedRate = Mathf.Min(Mathf.Max(appliedRate * 1.25f, 4f), 5.5f);
+            else
+                appliedRate *= rateScale;
+
+            if (gunWeight < 0.3f && absRate <= 22f && !crossingZero)
                 appliedRate *= CruiseAppliedRateScale;
 
-            float targetT = 1f - Mathf.Exp(-targetRate * dt);
+            float stableDt = StableDeltaTime(dt);
+            float targetT = 1f - Mathf.Exp(-targetRate * stableDt);
             state.SmoothedTargetDrive += (targetDrive - state.SmoothedTargetDrive) * targetT;
 
-            float appliedT = 1f - Mathf.Exp(-appliedRate * dt);
-            state.SmoothedAppliedDrive += (state.SmoothedTargetDrive - state.SmoothedAppliedDrive) * appliedT;
+            float appliedT = 1f - Mathf.Exp(-appliedRate * stableDt);
+            float driveStep = (state.SmoothedTargetDrive - state.SmoothedAppliedDrive) * appliedT;
+            float maxDriveStep = SmoothCameraConfigCache.OrbitFramingMaxDriveStep * stableDt;
+            if (maxDriveStep > 0f)
+                driveStep = Mathf.Clamp(driveStep, -maxDriveStep, maxDriveStep);
+            state.SmoothedAppliedDrive += driveStep;
         }
 
-        private static float ResolveSign(float pitch, float pitchRate)
+        internal static float ComputeManeuverSmoothScale(OrbitFramingState state)
         {
-            if (Mathf.Abs(pitch) >= 1f)
-                return Mathf.Sign(pitch);
-            if (Mathf.Abs(pitchRate) >= 3f)
-                return Mathf.Sign(pitchRate);
-            if (Mathf.Abs(pitch) >= 0.05f)
-                return Mathf.Sign(pitch);
-            return 0f;
+            float absRate = Mathf.Abs(state.LastPitchRate);
+            return Mathf.Lerp(1f, ManeuverMinScale, Mathf.Clamp01(absRate / ManeuverRateReference));
         }
 
         internal static void Reset(OrbitFramingState state, Transform body)
         {
             state.PrevPitch = body != null ? MeasurePitchDegrees(body) : 0f;
             state.PitchInitialized = body != null;
+            state.LastPitchRate = 0f;
+            state.SmoothedPitchRate = 0f;
+            state.SmoothedOrbitDistance = 0f;
+            state.OrbitDistanceInitialized = false;
             state.SmoothedTargetDrive = 0f;
             state.SmoothedAppliedDrive = 0f;
         }
 
+        /// <summary>Dynamic pitch framing along view up (meters).</summary>
+        internal static float ComputeDynamicFramingMeters(OrbitFramingState? state, bool needDynamic)
+        {
+            LastSmoothedDrive = state != null ? state.SmoothedAppliedDrive : 0f;
+            if (!needDynamic || state == null || Mathf.Abs(state.SmoothedAppliedDrive) <= 0.0005f)
+                return 0f;
+            if (state.SmoothedOrbitDistance < 0.5f)
+                return 0f;
+
+            float maneuverScale = ComputeManeuverSmoothScale(state);
+            return -state.SmoothedAppliedDrive * state.SmoothedOrbitDistance * VerticalOffsetFraction * maneuverScale;
+        }
+
+        internal static Vector3 ComputeDynamicFramingOffset(Vector3 viewUp, OrbitFramingState? state, bool needDynamic)
+        {
+            float meters = ComputeDynamicFramingMeters(state, needDynamic);
+            Vector3 dynamic = meters * viewUp;
+            LastDynamicFramingOffset = dynamic;
+            return dynamic;
+        }
+
+        /// <summary>Framing offset from vanilla orbit position (does not mutate transform).</summary>
+        internal static Vector3 ComputeFramingOffset(CameraStateManager cam, OrbitFramingState? state, bool needDynamic, Vector3 viewUp)
+            => ComputeBaseHeightOffset(cam) + ComputeDynamicFramingOffset(viewUp, state, needDynamic);
+
         internal static void ApplyFraming(CameraStateManager cam, OrbitFramingState? state)
         {
-            LastDynamicFramingOffset = Vector3.zero;
-            LastSmoothedDrive = state != null ? state.SmoothedAppliedDrive : 0f;
-            if (cam == null || cam.cameraPivot == null)
+            if (cam == null)
                 return;
+            Vector3 viewUp = cam.transform.rotation * Vector3.up;
+            cam.transform.position += ComputeFramingOffset(cam, state, state != null, viewUp);
+        }
 
-            ApplyBaseHeightScale(cam);
-            if (state == null || Mathf.Abs(state.SmoothedAppliedDrive) <= 0.0005f)
-                return;
+        internal static Vector3 ComputeBaseHeightOffset(CameraStateManager cam)
+        {
+            if (cam == null || cam.cameraPivot == null || !OrbitRuntimeFlags.HeightScaleActive)
+                return Vector3.zero;
 
-            Vector3 beforeDynamic = cam.transform.position;
             Vector3 pivotPos = cam.cameraPivot.position;
             Vector3 offset = cam.transform.position - pivotPos;
-            float dist = offset.magnitude;
-            if (dist < 0.5f)
-                return;
-
-            float verticalShift = -state.SmoothedAppliedDrive * dist * VerticalOffsetFraction;
-            cam.transform.position += Vector3.up * verticalShift;
-            LastDynamicFramingOffset = cam.transform.position - beforeDynamic;
+            Vector3 upPart = Vector3.Project(offset, Vector3.up);
+            Vector3 rest = offset - upPart;
+            Vector3 scaled = pivotPos + rest + upPart * OrbitRuntimeFlags.HeightScale;
+            return scaled - cam.transform.position;
         }
 
         internal static void ClearTrackingState()
@@ -141,14 +223,9 @@ namespace NOLoader.SmoothCamera.Services
 
         internal static void ApplyBaseHeightScale(CameraStateManager cam)
         {
-            if (cam == null || cam.cameraPivot == null || !OrbitRuntimeFlags.HeightScaleActive)
+            if (cam == null)
                 return;
-
-            Vector3 pivotPos = cam.cameraPivot.position;
-            Vector3 offset = cam.transform.position - pivotPos;
-            Vector3 upPart = Vector3.Project(offset, Vector3.up);
-            Vector3 rest = offset - upPart;
-            cam.transform.position = pivotPos + rest + upPart * OrbitRuntimeFlags.HeightScale;
+            cam.transform.position += ComputeBaseHeightOffset(cam);
         }
     }
 }
