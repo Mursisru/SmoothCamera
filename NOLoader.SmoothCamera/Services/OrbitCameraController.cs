@@ -229,14 +229,19 @@ namespace NOLoader.SmoothCamera.Services
                     useLatch: false);
 
                 float maneuverScale = OrbitFramingHelper.ComputeManeuverSmoothScale(state.Framing);
+                float speedMps = cam.followingRB != null ? cam.followingRB.velocity.magnitude : 0f;
+                float hsScale = OrbitFramingHelper.ComputeHighSpeedSmoothScale(
+                    speedMps,
+                    Mathf.Abs(state.Framing.LastPitchRate),
+                    Mathf.Abs(state.Framing.PrevPitch));
                 float followRate = Mathf.Lerp(
                     SmoothCameraConfigCache.CruiseAttitudeFollowRate,
                     SmoothCameraConfigCache.GunAttitudeFollowRate,
                     state.GunWeight);
-                followRate *= maneuverScale;
+                followRate *= maneuverScale * hsScale;
                 followRate = Mathf.Min(
                     followRate,
-                    SmoothCameraConfigCache.OrbitCameraRotSmoothRate * Mathf.Max(maneuverScale, ManeuverMinScale));
+                    SmoothCameraConfigCache.OrbitCameraRotSmoothRate * Mathf.Max(maneuverScale * hsScale, ManeuverMinScale));
 
                 float angleErr = Quaternion.Angle(state.SmoothedWorldRotation, targetWorld);
                 float microScale = Mathf.Clamp01(angleErr / RotationMicroAngleDegrees);
@@ -320,7 +325,12 @@ namespace NOLoader.SmoothCamera.Services
             }
             else
             {
-                float preRate = SmoothCameraConfigCache.OrbitCameraPosSmoothRate * 0.5f;
+                float speedForPre = cam.followingRB != null ? cam.followingRB.velocity.magnitude : 0f;
+                float hsPre = OrbitFramingHelper.ComputeHighSpeedSmoothScale(
+                    speedForPre,
+                    Mathf.Abs(state.Framing.LastPitchRate),
+                    Mathf.Abs(state.Framing.PrevPitch));
+                float preRate = SmoothCameraConfigCache.OrbitCameraPosSmoothRate * 0.5f * hsPre;
                 float preT = 1f - Mathf.Exp(-preRate * dt);
                 state.FilteredTargetModOffset = Vector3.Lerp(
                     state.FilteredTargetModOffset,
@@ -329,10 +339,14 @@ namespace NOLoader.SmoothCamera.Services
             }
 
             float maneuverScale = OrbitFramingHelper.ComputeManeuverSmoothScale(state.Framing);
-            float rate = SmoothCameraConfigCache.OrbitCameraPosSmoothRate;
-            rate *= Mathf.Lerp(0.42f, 1f, maneuverScale);
-
             float speed = cam.followingRB != null ? cam.followingRB.velocity.magnitude : 80f;
+            float hsScale = OrbitFramingHelper.ComputeHighSpeedSmoothScale(
+                speed,
+                Mathf.Abs(state.Framing.LastPitchRate),
+                Mathf.Abs(state.Framing.PrevPitch));
+            float rate = SmoothCameraConfigCache.OrbitCameraPosSmoothRate;
+            rate *= Mathf.Lerp(0.42f, 1f, maneuverScale) * hsScale;
+
             float lowSpeedScale = Mathf.Clamp(speed / 35f, 0.3f, 1f);
             rate *= lowSpeedScale;
 
@@ -341,7 +355,11 @@ namespace NOLoader.SmoothCamera.Services
             if (delta.sqrMagnitude > deadbandSq)
             {
                 float t = 1f - Mathf.Exp(-rate * dt);
-                state.SmoothedModOffset += delta * t;
+                Vector3 step = delta * t;
+                float maxStep = SmoothCameraConfigCache.OrbitCameraPosMaxMetersPerSec * Mathf.Max(dt, 1e-4f);
+                if (maxStep > 0f && step.sqrMagnitude > maxStep * maxStep)
+                    step = step.normalized * maxStep;
+                state.SmoothedModOffset += step;
             }
 
             cam.transform.position = vanillaOrbitPos + state.SmoothedModOffset;

@@ -96,6 +96,9 @@ namespace NOLoader.SmoothCamera.Services
 
             float pitch = state.PrevPitch;
             float pitchRate = state.LastPitchRate;
+            Rigidbody? rb = body.GetComponent<Rigidbody>();
+            float speedMps = rb != null ? rb.velocity.magnitude : 0f;
+            float hsScale = ComputeHighSpeedSmoothScale(speedMps, Mathf.Abs(pitchRate), Mathf.Abs(pitch));
 
             float absPitch = Mathf.Abs(pitch);
             float pitchNorm = Mathf.Clamp01(absPitch / 90f);
@@ -116,7 +119,7 @@ namespace NOLoader.SmoothCamera.Services
             if (crossingZero)
                 blendWeight *= 0.45f;
 
-            float targetDrive = attitudeDrive + rateDrive * blendWeight;
+            float targetDrive = (attitudeDrive + rateDrive * blendWeight) * hsScale;
             float maxDrive = MaxDriveFactor * strength;
             targetDrive = Mathf.Clamp(targetDrive, -maxDrive, maxDrive);
 
@@ -129,7 +132,12 @@ namespace NOLoader.SmoothCamera.Services
             if (crossingZero)
                 appliedRate *= 0.55f;
             else if (absRate > 22f)
-                appliedRate = Mathf.Min(Mathf.Max(appliedRate * 1.25f, 4f), 5.5f);
+            {
+                if (hsScale >= 0.92f)
+                    appliedRate = Mathf.Min(Mathf.Max(appliedRate * 1.25f, 4f), 5.5f);
+                else
+                    appliedRate *= Mathf.Lerp(0.35f, 0.65f, hsScale);
+            }
             else
                 appliedRate *= rateScale;
 
@@ -152,6 +160,17 @@ namespace NOLoader.SmoothCamera.Services
         {
             float absRate = Mathf.Abs(state.LastPitchRate);
             return Mathf.Lerp(1f, ManeuverMinScale, Mathf.Clamp01(absRate / ManeuverRateReference));
+        }
+
+        /// <summary>Extra damp for sustained maneuvers at high airspeed (position + rotation + framing drive).</summary>
+        internal static float ComputeHighSpeedSmoothScale(float speedMps, float absPitchRate, float absPitchDegrees)
+        {
+            float speedT = Mathf.Clamp01(
+                (speedMps - SmoothCameraConfigCache.OrbitHighSpeedManeuverStart) / 130f);
+            float rateT = Mathf.Clamp01((absPitchRate - 12f) / 38f);
+            float pitchT = Mathf.Clamp01((absPitchDegrees - 18f) / 42f);
+            float maneuverT = Mathf.Max(rateT, pitchT * 0.85f);
+            return Mathf.Lerp(1f, 0.34f, speedT * maneuverT);
         }
 
         internal static void Reset(OrbitFramingState state, Transform body)

@@ -1,5 +1,23 @@
 # Changelog
 
+## Pre-release 1.0.0-pr3 — NOLoader R52 (2026-06-10)
+
+**Branch:** `prerelease/noloader-r52` · **Tag:** `v1.0.0-pr3` · **Build:** `1.0.0 Build PR-R2SP52` (NOLoader core: `0.1.0 Build RDY1R52`)
+
+### NOLoader.SmoothCamera (R48 baseline + high-speed maneuver fix)
+
+- Restored **R48** orbit camera baseline from `v1.0.0-pr2` (dual offset filter, viewUp framing, visibility helper)
+- **High-speed sustained maneuver:** `ComputeHighSpeedSmoothScale` dampens framing drive, rotation follow, and position smoothing above `OrbitHighSpeedManeuverStart` (55 m/s)
+- At high speed, framing applied-rate no longer accelerates during strong pitch-rate (R48 snap source)
+- Position step cap via `OrbitCameraPosMaxMetersPerSec` (9 m/s default)
+- New config key: `OrbitHighSpeedManeuverStart`
+
+### Asset
+
+- **SmoothCamera-NOLoader-1.0.0-pr3.zip** — extract into `NOLoader/mods/SmoothCamera/` (requires NOLoader RDYTU core)
+
+---
+
 ## Pre-release 1.0.0-pr2 — NOLoader R48 (2026-06-10)
 
 **Branch:** `prerelease/noloader-r48` · **Tag:** `v1.0.0-pr2` · **Build:** `1.0.0 Build PR-R2SP48` (NOLoader core: `0.1.0 Build RDY1R48`)

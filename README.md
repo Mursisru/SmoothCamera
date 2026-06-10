@@ -2,7 +2,7 @@
 
 Multi-mode smooth external camera for **Nuclear Option**. Supports **BepInEx** and **NOLoader**. Replaces legacy `com.alex.smoothcenter`.
 
-**Version:** 1.0.0 Build PR-R2SP48 (pre-release **v1.0.0-pr2** — NOLoader R48)  
+**Version:** 1.0.0 Build PR-R2SP52 (pre-release **v1.0.0-pr3** — NOLoader R52)  
 **BepInEx GUID:** `com.at747.smoothcamera` · **NOLoader mod id:** `com.at747.smoothcamera`
 
 ## Features
@@ -20,7 +20,7 @@ Multi-mode smooth external camera for **Nuclear Option**. Supports **BepInEx** a
 ## Install (NOLoader)
 
 1. Install [NOLoader](https://github.com/Mursisru/NOLoader) RDYTU core first
-2. Download **SmoothCamera-NOLoader-1.0.0-pr2.zip** from [Releases](https://github.com/Mursisru/SmoothCamera/releases)
+2. Download **SmoothCamera-NOLoader-1.0.0-pr3.zip** from [Releases](https://github.com/Mursisru/SmoothCamera/releases)
 3. Extract into `NOLoader/mods/SmoothCamera/` (game closed)
 4. Config: `NOLoader/mods/SmoothCamera/mod_config.ini`
 

@@ -49,6 +49,7 @@ namespace NOLoader.SmoothCamera
         internal static float OrbitAppliedFramingFollowRate = 2.2f;
         internal static float OrbitCameraPosSmoothRate = 8.5f;
         internal static float OrbitCameraPosMaxMetersPerSec = 11f;
+        internal static float OrbitHighSpeedManeuverStart = 55f;
         internal static float OrbitFramingMaxDriveStep = 2.2f;
         internal static float OrbitCameraRotSmoothRate = 9f;
         internal static bool OrbitVisibilityFramingEnabled = true;
@@ -120,6 +121,7 @@ namespace NOLoader.SmoothCamera
             OrbitAppliedFramingFollowRate = cfg.GetFloat("Orbit", "OrbitAppliedFramingFollowRate", 2.2f);
             OrbitCameraPosSmoothRate = cfg.GetFloat("Orbit", "OrbitCameraPosSmoothRate", 8.5f);
             OrbitCameraPosMaxMetersPerSec = cfg.GetFloat("Orbit", "OrbitCameraPosMaxMetersPerSec", 11f);
+            OrbitHighSpeedManeuverStart = cfg.GetFloat("Orbit", "OrbitHighSpeedManeuverStart", 55f);
             OrbitFramingMaxDriveStep = cfg.GetFloat("Orbit", "OrbitFramingMaxDriveStep", 2.2f);
             OrbitCameraRotSmoothRate = cfg.GetFloat("Orbit", "OrbitCameraRotSmoothRate", 9f);
             OrbitVisibilityFramingEnabled = cfg.GetBool("Orbit", "OrbitVisibilityFramingEnabled", true);
