@@ -11,8 +11,8 @@ namespace NOLoader.SmoothCamera.Services
         internal int LastWeaponStationNumber = -1;
         internal bool FramingInitialized;
 
-        internal Vector3 SmoothedWorldPosition;
-        internal bool PositionInitialized;
+        internal float SmoothedVerticalMeters;
+        internal bool HeightOffsetInitialized;
         internal Quaternion SmoothedWorldRotation = Quaternion.identity;
         internal bool RotationInitialized;
 

@@ -2,19 +2,21 @@ using UnityEngine;
 
 namespace NOLoader.SmoothCamera.Services
 {
-    /// <summary>Builds target world position; presentation smoothing is in OrbitPresentComposer.</summary>
+    /// <summary>
+    /// Scalar world-Y offset on instant vanilla orbit — no full-position smooth (no longitudinal lag).
+    /// </summary>
     internal static class OrbitHeightController
     {
         internal static void Reset(OrbitState state)
         {
-            state.PositionInitialized = false;
+            state.SmoothedVerticalMeters = 0f;
+            state.HeightOffsetInitialized = false;
         }
 
-        internal static Vector3 ComputeTargetPosition(
+        internal static float ComputeTargetVerticalMeters(
             CameraStateManager cam,
             OrbitFramingState framing,
             Transform body,
-            Vector3 vanillaOrbitPos,
             bool needFraming,
             float gunWeight,
             float angularRateDeg,
@@ -26,11 +28,32 @@ namespace NOLoader.SmoothCamera.Services
 
             float framingMeters = 0f;
             if (needFraming && body != null && framing.PitchInitialized)
+            {
                 framingMeters = OrbitFramingSignal.ComputeFramingMeters(
                     framing, gunWeight, body, angularRateDeg, dt);
+            }
 
             OrbitFramingHelper.PublishFramingOffset(Vector3.up * framingMeters);
-            return vanillaOrbitPos + Vector3.up * (baseMeters + framingMeters);
+            return baseMeters + framingMeters;
+        }
+
+        internal static void Apply(
+            CameraStateManager cam,
+            OrbitState state,
+            Vector3 vanillaOrbitPos,
+            float targetMeters,
+            float angularRateDeg,
+            float dt)
+        {
+            float offsetHz = OrbitWidebandSmoother.PositionHz(angularRateDeg);
+            float smoothedMeters = OrbitWidebandSmoother.SmoothFloat(
+                ref state.SmoothedVerticalMeters,
+                ref state.HeightOffsetInitialized,
+                targetMeters,
+                offsetHz,
+                dt);
+
+            cam.transform.position = vanillaOrbitPos + Vector3.up * smoothedMeters;
         }
     }
 }

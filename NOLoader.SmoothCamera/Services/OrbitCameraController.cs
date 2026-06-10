@@ -183,8 +183,7 @@ namespace NOLoader.SmoothCamera.Services
             angularRateDeg = OrbitDynamicsHelper.GetAngularRateDeg(
                 cam.followingRB,
                 state.Framing.LastPitchRate);
-            OrbitFramingHelper.RefreshOrbitDistance(
-                state.Framing, cam, vanillaOrbitPos, angularRateDeg, dt);
+            OrbitFramingHelper.RefreshOrbitDistance(state.Framing, cam, vanillaOrbitPos, dt);
 
             if (needFraming && !state.FramingInitialized)
             {
@@ -204,7 +203,7 @@ namespace NOLoader.SmoothCamera.Services
 
                 OrbitHeightController.Reset(state);
                 OrbitVisibilityHelper.Reset(state);
-                OrbitPresentComposer.SyncFromCamera(state, cam.transform.position, cam.transform.rotation);
+                OrbitPresentComposer.SyncFromCamera(state, cam.transform.rotation);
                 InvalidateBoresightLatch(state, aircraft);
                 return;
             }
@@ -213,22 +212,29 @@ namespace NOLoader.SmoothCamera.Services
             Quaternion targetRotation = combatAimActive
                 ? OrbitRotationComposer.ComputeTargetRotation(aircraft, body, vanillaRotation)
                 : vanillaRotation;
-            Vector3 targetPosition = OrbitHeightController.ComputeTargetPosition(
+
+            OrbitPresentComposer.PresentRotation(
+                cam,
+                state,
+                aircraft,
+                targetRotation,
+                angularRateDeg,
+                dt);
+
+            float targetVerticalMeters = OrbitHeightController.ComputeTargetVerticalMeters(
                 cam,
                 state.Framing,
                 body,
-                vanillaOrbitPos,
                 needFraming,
                 framingWeight,
                 angularRateDeg,
                 dt);
 
-            OrbitPresentComposer.Present(
+            OrbitHeightController.Apply(
                 cam,
                 state,
-                aircraft,
-                targetRotation,
-                targetPosition,
+                vanillaOrbitPos,
+                targetVerticalMeters,
                 angularRateDeg,
                 dt);
         }

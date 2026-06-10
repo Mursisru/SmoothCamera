@@ -65,20 +65,14 @@ namespace NOLoader.SmoothCamera.Services
             OrbitFramingState state,
             CameraStateManager cam,
             Vector3 vanillaOrbitPos,
-            float angularRateDeg,
             float dt)
         {
             if (cam == null || cam.cameraPivot == null)
                 return;
 
-            float rawDistance = (vanillaOrbitPos - cam.cameraPivot.position).magnitude;
-            float signalHz = OrbitWidebandSmoother.SignalHz(angularRateDeg);
-            state.SmoothedOrbitDistance = OrbitWidebandSmoother.SmoothFloat(
-                ref state.SmoothedOrbitDistance,
-                ref state.OrbitDistanceInitialized,
-                rawDistance,
-                signalHz,
-                dt);
+            // Instant — smoothing distance caused longitudinal framing lag on accel/decel.
+            state.SmoothedOrbitDistance = (vanillaOrbitPos - cam.cameraPivot.position).magnitude;
+            state.OrbitDistanceInitialized = true;
         }
 
         internal static void Reset(OrbitFramingState state, Transform body)

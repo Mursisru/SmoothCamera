@@ -1,5 +1,22 @@
 # Changelog
 
+## Pre-release 1.0.0-pr6 — NOLoader R91 (2026-06-10)
+
+**Branch:** `prerelease/noloader-r91` · **Build:** `1.0.0 Build PR-R2SP91` (NOLoader core: `0.1.0 Build RDY1R91`)
+
+### NOLoader.SmoothCamera (R91 final polish)
+
+- **Rotation:** wideband smooth retained (`OrbitRotationSmoothHz`) — overload jitter stays fixed
+- **Position:** instant vanilla orbit + scalar world-Y offset only — fixes forward/back jitter, accel pull-away, backward teleport (R90 full-position smooth removed)
+- **Signals:** instant orbit distance; framing drive + pitch rate via `OrbitSignalSmoothHz`
+- Single VPU mode for all weapons (R87+)
+
+### Asset
+
+- **SmoothCamera-NOLoader-1.0.0-pr6.zip** — extract into `NOLoader/mods/SmoothCamera/` (requires NOLoader RDYTU core)
+
+---
+
 ## Pre-release 1.0.0-pr5 — NOLoader R90 (2026-06-10)
 
 **Branch:** `prerelease/noloader-r90` · **Build:** `1.0.0 Build PR-R2SP90` (NOLoader core: `0.1.0 Build RDY1R90`)
