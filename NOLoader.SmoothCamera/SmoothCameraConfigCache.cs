@@ -33,7 +33,7 @@ namespace NOLoader.SmoothCamera
         internal static float CockpitEntrySuppressSeconds = 1f;
         internal static float OrbitHeightMultiplier = 0.68f;
         internal static float OrbitBaseLookDownDegrees = 9f;
-        internal static float OrbitDynamicFramingStrength = 2f;
+        internal static float OrbitDynamicFramingStrength = 2.9f;
         internal static float AutoCenterGraceSeconds = 0.35f;
         internal static bool OrbitDynamicFramingEnabled = true;
         internal static float OrbitPitchFramingStartDegrees = 5f;
@@ -45,14 +45,11 @@ namespace NOLoader.SmoothCamera
         internal static float OrbitPitchFrameBlendStrength = 0.82f;
         internal static float OrbitMinHeightMultiplier = 0.38f;
         internal static float OrbitMaxHeightMultiplier = 0.88f;
-        internal static float OrbitFramingFollowRate = 9f;
-        internal static float OrbitAppliedFramingFollowRate = 2.2f;
-        internal static float OrbitCameraPosSmoothRate = 8.5f;
-        internal static float OrbitCameraPosMaxMetersPerSec = 11f;
-        internal static float OrbitHighSpeedManeuverStart = 55f;
-        internal static float OrbitFramingMaxDriveStep = 2.2f;
-        internal static float OrbitCameraRotSmoothRate = 9f;
-        internal static bool OrbitVisibilityFramingEnabled = true;
+        internal static float OrbitVerticalFollowRate = 9f;
+        internal static float OrbitVerticalMaxStepMps = 14f;
+        internal static float OrbitFramingDriveSmoothHz = 14f;
+        internal static bool OrbitDiagnosticInstantBoresight;
+        internal static bool OrbitVisibilityFramingEnabled;
         internal static float OrbitVisibilityTargetScreenY = 0.42f;
         internal static float OrbitVisibilityMarginBottom = 0.12f;
         internal static float OrbitVisibilityMarginTop = 0.82f;
@@ -105,7 +102,7 @@ namespace NOLoader.SmoothCamera
 
             OrbitHeightMultiplier = cfg.GetFloat("Orbit", "OrbitHeightMultiplier", 0.68f);
             OrbitBaseLookDownDegrees = cfg.GetFloat("Orbit", "OrbitBaseLookDownDegrees", 9f);
-            OrbitDynamicFramingStrength = cfg.GetFloat("Orbit", "OrbitDynamicFramingStrength", 2f);
+            OrbitDynamicFramingStrength = cfg.GetFloat("Orbit", "OrbitDynamicFramingStrength", 2.9f);
             AutoCenterGraceSeconds = cfg.GetFloat("Orbit", "AutoCenterGraceSeconds", 0.35f);
             OrbitDynamicFramingEnabled = cfg.GetBool("Orbit", "OrbitDynamicFramingEnabled", true);
             OrbitPitchFramingStartDegrees = cfg.GetFloat("Orbit", "OrbitPitchFramingStartDegrees", 5f);
@@ -117,14 +114,13 @@ namespace NOLoader.SmoothCamera
             OrbitPitchFrameBlendStrength = cfg.GetFloat("Orbit", "OrbitPitchFrameBlendStrength", 0.82f);
             OrbitMinHeightMultiplier = cfg.GetFloat("Orbit", "OrbitMinHeightMultiplier", 0.38f);
             OrbitMaxHeightMultiplier = cfg.GetFloat("Orbit", "OrbitMaxHeightMultiplier", 0.88f);
-            OrbitFramingFollowRate = cfg.GetFloat("Orbit", "OrbitFramingFollowRate", 9f);
-            OrbitAppliedFramingFollowRate = cfg.GetFloat("Orbit", "OrbitAppliedFramingFollowRate", 2.2f);
-            OrbitCameraPosSmoothRate = cfg.GetFloat("Orbit", "OrbitCameraPosSmoothRate", 8.5f);
-            OrbitCameraPosMaxMetersPerSec = cfg.GetFloat("Orbit", "OrbitCameraPosMaxMetersPerSec", 11f);
-            OrbitHighSpeedManeuverStart = cfg.GetFloat("Orbit", "OrbitHighSpeedManeuverStart", 55f);
-            OrbitFramingMaxDriveStep = cfg.GetFloat("Orbit", "OrbitFramingMaxDriveStep", 2.2f);
-            OrbitCameraRotSmoothRate = cfg.GetFloat("Orbit", "OrbitCameraRotSmoothRate", 9f);
-            OrbitVisibilityFramingEnabled = cfg.GetBool("Orbit", "OrbitVisibilityFramingEnabled", true);
+            OrbitVerticalFollowRate = cfg.GetFloat("Orbit", "OrbitVerticalFollowRate",
+                cfg.GetFloat("Orbit", "OrbitVerticalSpringHz", 9f));
+            OrbitVerticalMaxStepMps = cfg.GetFloat("Orbit", "OrbitVerticalMaxStepMps",
+                cfg.GetFloat("Orbit", "OrbitVerticalMaxSpeedMps", 14f));
+            OrbitFramingDriveSmoothHz = cfg.GetFloat("Orbit", "OrbitFramingDriveSmoothHz", 14f);
+            OrbitDiagnosticInstantBoresight = cfg.GetBool("Orbit", "OrbitDiagnosticInstantBoresight", false);
+            OrbitVisibilityFramingEnabled = cfg.GetBool("Orbit", "OrbitVisibilityFramingEnabled", false);
             OrbitVisibilityTargetScreenY = cfg.GetFloat("Orbit", "OrbitVisibilityTargetScreenY", 0.42f);
             OrbitVisibilityMarginBottom = cfg.GetFloat("Orbit", "OrbitVisibilityMarginBottom", 0.12f);
             OrbitVisibilityMarginTop = cfg.GetFloat("Orbit", "OrbitVisibilityMarginTop", 0.82f);
@@ -139,7 +135,6 @@ namespace NOLoader.SmoothCamera
             LoadMode(cfg, "TV", Tv, true, 1f, 1.2f, 0f, true);
             LoadMode(cfg, "FreeSpectator", Free, false, 0f, 0f, 0f, false);
 
-            OrbitFramingHelper.RefreshConfigCache();
             OrbitRuntimeFlags.Refresh();
         }
 

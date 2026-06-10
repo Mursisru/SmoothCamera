@@ -52,16 +52,22 @@ namespace NOLoader.SmoothCamera.Services
             OrbitCombatRotationHelper.PreparePrefix(orbit, cam);
         }
 
-        internal static bool ShouldBlockCombatBoresight(CameraOrbitState orbit)
+        internal static bool ShouldBlockCombatBoresight(CameraOrbitState orbit, Aircraft? aircraft = null)
         {
+            if (AutoCenterController.IsRecenteringOrGrace(orbit))
+                return false;
+
             if (OrbitInputCache.Frame == Time.frameCount && OrbitInputCache.SustainedManualInput)
                 return true;
+
+            if (aircraft != null && BoresightAimHelper.IsGunSelected(aircraft))
+                return false;
 
             return HasManualPanDeviation(orbit);
         }
 
-        internal static bool IsUserManualOrbitView(CameraOrbitState orbit)
-            => ShouldBlockCombatBoresight(orbit);
+        internal static bool IsUserManualOrbitView(CameraOrbitState orbit, Aircraft? aircraft = null)
+            => ShouldBlockCombatBoresight(orbit, aircraft);
 
         internal static void PrepareViewSwitch(CameraStateManager cam)
         {
@@ -155,6 +161,7 @@ namespace NOLoader.SmoothCamera.Services
             if (!applyCombatBoresight && lookAtLerp > LookAtTargetGate)
             {
                 OrbitFramingHelper.ClearTrackingState();
+                OrbitHeightController.Reset(GetState(aircraft));
                 return;
             }
 
@@ -162,215 +169,73 @@ namespace NOLoader.SmoothCamera.Services
             OrbitState state = GetState(aircraft);
             float dt = OrbitFramingHelper.StableDeltaTime(Time.unscaledDeltaTime);
             bool needFraming = OrbitRuntimeFlags.DynamicFramingActive;
-
-            OrbitFramingHelper.RefreshPitchRate(state.Framing, body, dt);
-            OrbitFramingHelper.RefreshOrbitDistance(state.Framing, cam, dt);
-
-            if (applyCombatBoresight)
-            {
-                bool gunSelected = BoresightAimHelper.IsGunSelected(aircraft);
-                UpdateGunTransition(state, gunSelected);
-
-                bool releaseLocked = Time.unscaledTime < state.ReleaseLockUntil;
-                bool gunReady = gunSelected
-                    && !releaseLocked
-                    && state.GunStableFrames >= SmoothCameraConfigCache.GunEngageStableFrames;
-
-                float targetGunWeight = gunReady ? 1f : 0f;
-                state.GunWeight = Mathf.MoveTowards(
-                    state.GunWeight,
-                    targetGunWeight,
-                    SmoothCameraConfigCache.GunWeightBlendRate * dt);
-            }
-
-            if (needFraming)
-            {
-                if (!state.FramingInitialized)
-                {
-                    OrbitFramingHelper.Reset(state.Framing, body);
-                    state.FramingInitialized = true;
-                }
-
-                OrbitFramingHelper.UpdateSmooth(state.Framing, body, state.GunWeight, dt);
-            }
-
             Vector3 vanillaOrbitPos = cam.transform.position;
 
-            if (IsUserManualOrbitView(orbitState))
+            OrbitFramingHelper.RefreshPitchRate(state.Framing, body, dt);
+            OrbitFramingHelper.RefreshOrbitDistance(state.Framing, cam, vanillaOrbitPos, dt);
+
+            if (OrbitRuntimeFlags.CombatFollowActive)
+                UpdateGunTransition(state, BoresightAimHelper.IsGunSelected(aircraft), dt);
+
+            if (needFraming && !state.FramingInitialized)
+            {
+                OrbitFramingHelper.Reset(state.Framing, body);
+                state.FramingInitialized = true;
+            }
+
+            if (IsUserManualOrbitView(orbitState, aircraft))
             {
                 OrbitCombatRotationHelper.LogBoresightSkip(
                     OrbitInputCache.SustainedManualInput ? "sustained_axis" : "pan_tilt_deviation");
 
-                state.SmoothedModOffset = Vector3.zero;
-                state.FilteredTargetModOffset = Vector3.zero;
-                state.SmoothedBaseHeightOffset = Vector3.zero;
-                state.FilteredTargetInitialized = false;
-                state.BaseHeightInitialized = false;
-                state.LastVanillaOrbitPos = vanillaOrbitPos;
-                state.PositionInitialized = true;
+                OrbitHeightController.Reset(state);
                 OrbitVisibilityHelper.Reset(state);
-                state.SmoothedWorldRotation = cam.transform.rotation;
-                state.RotationInitialized = true;
+                OrbitRotationComposer.SyncFromCamera(state, cam.transform.rotation);
                 InvalidateBoresightLatch(state, aircraft);
                 return;
             }
 
-            if (!state.RotationInitialized)
-            {
-                state.SmoothedWorldRotation = cam.transform.rotation;
-                state.RotationInitialized = true;
-            }
+            Quaternion vanillaRotation = cam.transform.rotation;
+            float absPitchRate = Mathf.Abs(state.Framing.LastPitchRate);
 
             if (OrbitRuntimeFlags.CombatFollowActive)
             {
-                Quaternion targetWorld = BoresightAimHelper.ComputeBoresightWorldRotation(
+                OrbitRotationComposer.Tick(
+                    cam,
+                    state,
                     aircraft,
                     body,
-                    useLatch: false);
-
-                float maneuverScale = OrbitFramingHelper.ComputeManeuverSmoothScale(state.Framing);
-                float speedMps = cam.followingRB != null ? cam.followingRB.velocity.magnitude : 0f;
-                float hsScale = OrbitFramingHelper.ComputeHighSpeedSmoothScale(
-                    speedMps,
-                    Mathf.Abs(state.Framing.LastPitchRate),
-                    Mathf.Abs(state.Framing.PrevPitch));
-                float followRate = Mathf.Lerp(
-                    SmoothCameraConfigCache.CruiseAttitudeFollowRate,
-                    SmoothCameraConfigCache.GunAttitudeFollowRate,
-                    state.GunWeight);
-                followRate *= maneuverScale * hsScale;
-                followRate = Mathf.Min(
-                    followRate,
-                    SmoothCameraConfigCache.OrbitCameraRotSmoothRate * Mathf.Max(maneuverScale * hsScale, ManeuverMinScale));
-
-                float angleErr = Quaternion.Angle(state.SmoothedWorldRotation, targetWorld);
-                float microScale = Mathf.Clamp01(angleErr / RotationMicroAngleDegrees);
-                followRate *= Mathf.Lerp(0.28f, 1f, microScale);
-
-                float rotT = 1f - Mathf.Exp(-followRate * dt);
-                state.SmoothedWorldRotation = Quaternion.Slerp(state.SmoothedWorldRotation, targetWorld, rotT);
-                cam.transform.rotation = state.SmoothedWorldRotation;
-                BoresightLatchHelper.UpdateHudLatch(aircraft, state.SmoothedWorldRotation);
+                    vanillaRotation,
+                    absPitchRate,
+                    dt,
+                    combatFollowActive: true);
             }
             else
             {
-                OrbitCombatRotationHelper.LogBoresightSkip("combat_follow_off");
+                OrbitRotationComposer.SyncFromCamera(state, vanillaRotation);
             }
 
-            Vector3 viewUp = state.SmoothedWorldRotation * Vector3.up;
-            Vector3 baseHeightOffset = SmoothBaseHeightOffset(
-                state,
-                OrbitFramingHelper.ComputeBaseHeightOffset(cam),
-                dt);
-            Vector3 dynamicFraming = OrbitFramingHelper.ComputeDynamicFramingOffset(viewUp, state.Framing, needFraming);
-            Vector3 virtualCameraPos = vanillaOrbitPos + baseHeightOffset + dynamicFraming + state.SmoothedModOffset;
-
-            Vector3 visOffset = OrbitVisibilityHelper.ComputeVisibilityOffset(
+            float targetVerticalMeters = OrbitHeightController.ComputeTargetVerticalMeters(
                 cam,
-                aircraft,
+                state.Framing,
+                body,
+                needFraming,
+                state.GunWeight,
+                dt);
+
+            OrbitHeightController.Apply(
+                cam,
                 state,
-                lookAtLerp,
-                state.Framing.LastPitchRate,
-                state.Framing.PitchInitialized ? state.Framing.PrevPitch : 0f,
-                dt,
-                virtualCameraPos,
-                state.SmoothedWorldRotation);
-
-            Vector3 targetModOffset = baseHeightOffset + dynamicFraming + visOffset;
-            ApplyModOffsetSmoothing(cam, state, vanillaOrbitPos, targetModOffset, dt);
-        }
-
-        private const float ManeuverMinScale = 0.25f;
-        private const float PositionDeadbandMeters = 0.014f;
-        private const float RotationMicroAngleDegrees = 1.75f;
-
-        private static Vector3 SmoothBaseHeightOffset(OrbitState state, Vector3 target, float dt)
-        {
-            if (!state.BaseHeightInitialized)
-            {
-                state.SmoothedBaseHeightOffset = target;
-                state.BaseHeightInitialized = true;
-                return target;
-            }
-
-            float t = 1f - Mathf.Exp(-5.5f * dt);
-            state.SmoothedBaseHeightOffset = Vector3.Lerp(state.SmoothedBaseHeightOffset, target, t);
-            return state.SmoothedBaseHeightOffset;
-        }
-
-        private static void ApplyModOffsetSmoothing(
-            CameraStateManager cam,
-            OrbitState state,
-            Vector3 vanillaOrbitPos,
-            Vector3 targetModOffset,
-            float dt)
-        {
-            if (!state.PositionInitialized)
-            {
-                state.SmoothedModOffset = targetModOffset;
-                state.FilteredTargetModOffset = targetModOffset;
-                state.FilteredTargetInitialized = true;
-                state.LastVanillaOrbitPos = vanillaOrbitPos;
-                state.PositionInitialized = true;
-            }
-            else
-            {
-                state.LastVanillaOrbitPos = vanillaOrbitPos;
-            }
-
-            if (!state.FilteredTargetInitialized)
-            {
-                state.FilteredTargetModOffset = targetModOffset;
-                state.FilteredTargetInitialized = true;
-            }
-            else
-            {
-                float speedForPre = cam.followingRB != null ? cam.followingRB.velocity.magnitude : 0f;
-                float hsPre = OrbitFramingHelper.ComputeHighSpeedSmoothScale(
-                    speedForPre,
-                    Mathf.Abs(state.Framing.LastPitchRate),
-                    Mathf.Abs(state.Framing.PrevPitch));
-                float preRate = SmoothCameraConfigCache.OrbitCameraPosSmoothRate * 0.5f * hsPre;
-                float preT = 1f - Mathf.Exp(-preRate * dt);
-                state.FilteredTargetModOffset = Vector3.Lerp(
-                    state.FilteredTargetModOffset,
-                    targetModOffset,
-                    preT);
-            }
-
-            float maneuverScale = OrbitFramingHelper.ComputeManeuverSmoothScale(state.Framing);
-            float speed = cam.followingRB != null ? cam.followingRB.velocity.magnitude : 80f;
-            float hsScale = OrbitFramingHelper.ComputeHighSpeedSmoothScale(
-                speed,
-                Mathf.Abs(state.Framing.LastPitchRate),
-                Mathf.Abs(state.Framing.PrevPitch));
-            float rate = SmoothCameraConfigCache.OrbitCameraPosSmoothRate;
-            rate *= Mathf.Lerp(0.42f, 1f, maneuverScale) * hsScale;
-
-            float lowSpeedScale = Mathf.Clamp(speed / 35f, 0.3f, 1f);
-            rate *= lowSpeedScale;
-
-            Vector3 delta = state.FilteredTargetModOffset - state.SmoothedModOffset;
-            float deadbandSq = PositionDeadbandMeters * PositionDeadbandMeters;
-            if (delta.sqrMagnitude > deadbandSq)
-            {
-                float t = 1f - Mathf.Exp(-rate * dt);
-                Vector3 step = delta * t;
-                float maxStep = SmoothCameraConfigCache.OrbitCameraPosMaxMetersPerSec * Mathf.Max(dt, 1e-4f);
-                if (maxStep > 0f && step.sqrMagnitude > maxStep * maxStep)
-                    step = step.normalized * maxStep;
-                state.SmoothedModOffset += step;
-            }
-
-            cam.transform.position = vanillaOrbitPos + state.SmoothedModOffset;
+                vanillaOrbitPos,
+                targetVerticalMeters,
+                absPitchRate,
+                dt);
         }
 
         internal static void InvalidateBoresightLatch(OrbitState state, Aircraft aircraft)
         {
             state.RotationInitialized = false;
-            state.PositionInitialized = false;
-            state.FilteredTargetInitialized = false;
-            state.BaseHeightInitialized = false;
+            OrbitHeightController.Reset(state);
             OrbitVisibilityHelper.Reset(state);
             BoresightLatchHelper.Invalidate(aircraft);
         }
@@ -388,7 +253,7 @@ namespace NOLoader.SmoothCamera.Services
                 || Mathf.Abs(tilt - defaultTilt) > ManualPanEpsilon;
         }
 
-        private static void UpdateGunTransition(OrbitState state, bool gunSelected)
+        private static void UpdateGunTransition(OrbitState state, bool gunSelected, float dt)
         {
             if (gunSelected && !state.WasGunSelected)
                 state.GunStableFrames = 0;
@@ -403,6 +268,17 @@ namespace NOLoader.SmoothCamera.Services
                 state.GunStableFrames = 0;
 
             state.WasGunSelected = gunSelected;
+
+            bool releaseLocked = Time.unscaledTime < state.ReleaseLockUntil;
+            bool gunReady = gunSelected
+                && !releaseLocked
+                && state.GunStableFrames >= SmoothCameraConfigCache.GunEngageStableFrames;
+
+            float targetGunWeight = gunReady ? 1f : 0f;
+            state.GunWeight = Mathf.MoveTowards(
+                state.GunWeight,
+                targetGunWeight,
+                SmoothCameraConfigCache.GunWeightBlendRate * dt);
         }
 
         private static OrbitState GetState(Unit unit)

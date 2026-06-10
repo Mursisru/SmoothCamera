@@ -2,7 +2,7 @@
 
 Multi-mode smooth external camera for **Nuclear Option**. Supports **BepInEx** and **NOLoader**. Replaces legacy `com.alex.smoothcenter`.
 
-**Version:** 1.0.0 Build PR-R2SP52 (pre-release **v1.0.0-pr3** — NOLoader R52)  
+**Version:** 1.0.0 Build PR-R2SP84 (pre-release **v1.0.0-pr4** — NOLoader R84)  
 **BepInEx GUID:** `com.at747.smoothcamera` · **NOLoader mod id:** `com.at747.smoothcamera`
 
 ## Features

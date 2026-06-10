@@ -1,5 +1,24 @@
 # Changelog
 
+## Pre-release 1.0.0-pr4 — NOLoader R84 (2026-06-10)
+
+**Branch:** `prerelease/noloader-r84` · **Build:** `1.0.0 Build PR-R2SP84` (NOLoader core: `0.1.0 Build RDY1R84`)
+
+### NOLoader.SmoothCamera (R80–R84 professional rewrite)
+
+- **R80–R81:** spring vertical composer (reverted); world-space scalar height (`OrbitHeightController`)
+- **R82:** hotfix — removed anchor compensation that left camera behind aircraft
+- **R83:** removed orbit-distance smooth (5 Hz jitter); framing drive smooth 14 Hz
+- **R84:** rotation before position; stiff VPU path + cruise vanilla blend for non-gun weapons; maneuver rotation boost in cruise; scalar world-Y height follow
+- New sources: `OrbitFramingSignal`, `OrbitHeightController`, `OrbitRotationComposer`
+- Deploy pack: `deploy/NOLoader/mods/SmoothCamera/`
+
+### Asset
+
+- **SmoothCamera-NOLoader-1.0.0-pr4.zip** — extract into `NOLoader/mods/SmoothCamera/` (requires NOLoader RDYTU core)
+
+---
+
 ## Pre-release 1.0.0-pr3 — NOLoader R52 (2026-06-10)
 
 **Branch:** `prerelease/noloader-r52` · **Tag:** `v1.0.0-pr3` · **Build:** `1.0.0 Build PR-R2SP52` (NOLoader core: `0.1.0 Build RDY1R52`)

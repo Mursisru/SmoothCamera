@@ -79,7 +79,9 @@ namespace NOLoader.SmoothCamera.Services
             _cacheFrame = Time.frameCount;
             _cacheAircraft = aircraft;
             _cacheStation = station;
-            _cacheGunSelected = station?.WeaponInfo != null && station.WeaponInfo.gun;
+            // Match CombatHUD: HUDBoresightState when WeaponInfo.boresight; guns also carry gun=true.
+            _cacheGunSelected = station?.WeaponInfo != null
+                && (station.WeaponInfo.gun || station.WeaponInfo.boresight);
             _cacheGunDir = _cacheGunSelected
                 ? AverageWeaponForward(station!, aircraft.transform.forward)
                 : aircraft.transform.forward;

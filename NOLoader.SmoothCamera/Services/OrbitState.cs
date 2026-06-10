@@ -13,14 +13,10 @@ namespace NOLoader.SmoothCamera.Services
         internal Quaternion SmoothedWorldRotation = Quaternion.identity;
         internal bool RotationInitialized;
 
-        /// <summary>Smoothed mod offset (base height + dynamic framing + visibility).</summary>
-        internal Vector3 SmoothedModOffset;
-        internal Vector3 FilteredTargetModOffset;
-        internal Vector3 SmoothedBaseHeightOffset;
-        internal bool FilteredTargetInitialized;
-        internal bool BaseHeightInitialized;
+        /// <summary>World-Y scalar offset from vanilla orbit (meters).</summary>
+        internal float SmoothedVerticalMeters;
+        internal bool HeightOffsetInitialized;
         internal Vector3 LastVanillaOrbitPos;
-        internal bool PositionInitialized;
 
         internal float VisibilityTargetOffset;
         internal float VisibilityAppliedOffset;

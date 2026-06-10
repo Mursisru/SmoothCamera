@@ -17,8 +17,9 @@ namespace NOLoader.SmoothCamera.Services
 
         internal static void PreparePrefix(CameraOrbitState orbit, CameraStateManager cam)
         {
+            var aircraft = cam?.followingUnit as Aircraft;
             CombatBoresightFrameActive = OrbitRuntimeFlags.CombatFollowActive
-                && !OrbitCameraController.ShouldBlockCombatBoresight(orbit);
+                && !OrbitCameraController.ShouldBlockCombatBoresight(orbit, aircraft);
         }
 
         internal static void LogBoresightSkip(string reason)

@@ -12,6 +12,7 @@ namespace NOLoader.SmoothCamera.Services
         internal static bool CombatFollowActive;
         internal static bool HudCompensationActive;
         internal static bool VisibilityFramingActive;
+        internal static bool DiagnosticInstantBoresight;
         internal static float HeightScale = 1f;
 
         internal static void Refresh()
@@ -27,6 +28,7 @@ namespace NOLoader.SmoothCamera.Services
                 && !CombatFollowActive;
 
             VisibilityFramingActive = SmoothCameraConfigCache.OrbitVisibilityFramingEnabled;
+            DiagnosticInstantBoresight = SmoothCameraConfigCache.OrbitDiagnosticInstantBoresight;
 
             OrbitPostMotionActive = SmoothCameraConfigCache.Enabled
                 && SmoothCameraConfigCache.Orbit.Enabled
