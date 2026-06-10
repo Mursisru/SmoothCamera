@@ -1,9 +1,9 @@
 # Smooth Camera AutoCenter
 
-Multi-mode smooth external camera for **Nuclear Option** (BepInEx). Replaces legacy `com.alex.smoothcenter`.
+Multi-mode smooth external camera for **Nuclear Option**. Supports **BepInEx** and **NOLoader**. Replaces legacy `com.alex.smoothcenter`.
 
-**Version:** 1.0.0 Build PR-R2SP1  
-**BepInEx GUID:** `com.at747.smoothcamera`
+**Version:** 1.0.0 Build PR-R2SP40 (pre-release **v1.0.0-pr1** — NOLoader R40)  
+**BepInEx GUID:** `com.at747.smoothcamera` · **NOLoader mod id:** `com.at747.smoothcamera`
 
 ## Features
 
@@ -12,10 +12,17 @@ Multi-mode smooth external camera for **Nuclear Option** (BepInEx). Replaces leg
 - **HUD:** full flight HUD on local aircraft in external views; reticle compensates dynamic camera offset
 - **G-LOC:** blackout/vignette in external views
 
-## Install
+## Install (BepInEx)
 
 1. Remove old plugins: `SmaathThirdPersonCamera.dll`, `com.alex.smoothcenter`
 2. Copy `SmoothCamera_Engine.dll` to `BepInEx\plugins\`
+
+## Install (NOLoader)
+
+1. Install [NOLoader](https://github.com/Mursisru/NOLoader) RDYTU core first
+2. Download **SmoothCamera-NOLoader-1.0.0-pr1.zip** from [Releases](https://github.com/Mursisru/SmoothCamera/releases)
+3. Extract into `NOLoader/mods/SmoothCamera/` (game closed)
+4. Config: `NOLoader/mods/SmoothCamera/mod_config.ini`
 
 ## Config
 
@@ -31,11 +38,17 @@ Key sections: `General`, `Combat`, `Orbit`, `Chase`, `TV`.
 
 ## Build
 
+**BepInEx:**
+
 ```powershell
 msbuild SmoothCamera_Engine\SmoothCamera_Engine.csproj /p:Configuration=Release
 ```
 
-Output: `SmoothCamera_Engine\bin\Release\SmoothCamera_Engine.dll`
+**NOLoader mod** (requires sibling `NOLoader_Engine` repo):
+
+```powershell
+dotnet build NOLoader.SmoothCamera\NOLoader.SmoothCamera.csproj -c RDYTU
+```
 
 ## Migration
 

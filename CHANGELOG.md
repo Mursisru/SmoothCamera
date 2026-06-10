@@ -1,5 +1,23 @@
 # Changelog
 
+## Pre-release 1.0.0-pr1 — NOLoader R40 (2026-06-10)
+
+**Branch:** `prerelease/noloader-r40` · **Tag:** `v1.0.0-pr1` · **Build:** `1.0.0 Build PR-R2SP40` (Engine: `DEV2SP40`)
+
+### NOLoader.SmoothCamera (orbit R37–R40)
+
+- BepInEx-like rotation slerp: `Lerp(cruise,gun,gunWeight)` without hard VPU snap
+- Combat gates: axis debounce (2+ frames >0.15), block on pan/tilt deviation >0.35°
+- HUD-only boresight latch; soft gun transition (no rotation reset on gun switch)
+- Dynamic framing: target/applied drive, pitch-rate dampening, SmoothStep gunWeight blend
+- Source: `NOLoader.SmoothCamera/` · deploy pack: `deploy/NOLoader/mods/SmoothCamera/`
+
+### Asset
+
+- **SmoothCamera-NOLoader-1.0.0-pr1.zip** — extract into `NOLoader/mods/SmoothCamera/` (requires NOLoader RDYTU core)
+
+---
+
 ## 1.0.0 (release)
 
 - Orbit combat camera: boresight follow (smooth cruise, stiff VPU), dynamic pitch height framing, HUD reticle compensation.
