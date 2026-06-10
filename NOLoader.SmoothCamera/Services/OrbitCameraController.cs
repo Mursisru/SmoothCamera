@@ -57,17 +57,20 @@ namespace NOLoader.SmoothCamera.Services
             if (AutoCenterController.IsRecenteringOrGrace(orbit))
                 return false;
 
-            if (OrbitInputCache.Frame == Time.frameCount && OrbitInputCache.SustainedManualInput)
-                return true;
+            if (OrbitRuntimeFlags.CombatFollowActive)
+                return IsSustainedManualOverride();
 
-            if (aircraft != null && BoresightAimHelper.IsGunSelected(aircraft))
-                return false;
+            if (IsSustainedManualOverride())
+                return true;
 
             return HasManualPanDeviation(orbit);
         }
 
         internal static bool IsUserManualOrbitView(CameraOrbitState orbit, Aircraft? aircraft = null)
             => ShouldBlockCombatBoresight(orbit, aircraft);
+
+        private static bool IsSustainedManualOverride()
+            => OrbitInputCache.Frame == Time.frameCount && OrbitInputCache.SustainedManualInput;
 
         internal static void PrepareViewSwitch(CameraStateManager cam)
         {
@@ -170,12 +173,18 @@ namespace NOLoader.SmoothCamera.Services
             float dt = OrbitFramingHelper.StableDeltaTime(Time.unscaledDeltaTime);
             bool needFraming = OrbitRuntimeFlags.DynamicFramingActive;
             Vector3 vanillaOrbitPos = cam.transform.position;
+            Quaternion vanillaRotation = cam.transform.rotation;
 
-            OrbitFramingHelper.RefreshPitchRate(state.Framing, body, dt);
-            OrbitFramingHelper.RefreshOrbitDistance(state.Framing, cam, vanillaOrbitPos, dt);
+            float angularRateDeg = OrbitDynamicsHelper.GetAngularRateDeg(
+                cam.followingRB,
+                state.Framing.LastPitchRate);
 
-            if (OrbitRuntimeFlags.CombatFollowActive)
-                UpdateGunTransition(state, BoresightAimHelper.IsGunSelected(aircraft), dt);
+            OrbitFramingHelper.RefreshPitchRate(state.Framing, body, angularRateDeg, dt);
+            angularRateDeg = OrbitDynamicsHelper.GetAngularRateDeg(
+                cam.followingRB,
+                state.Framing.LastPitchRate);
+            OrbitFramingHelper.RefreshOrbitDistance(
+                state.Framing, cam, vanillaOrbitPos, angularRateDeg, dt);
 
             if (needFraming && !state.FramingInitialized)
             {
@@ -183,52 +192,44 @@ namespace NOLoader.SmoothCamera.Services
                 state.FramingInitialized = true;
             }
 
-            if (IsUserManualOrbitView(orbitState, aircraft))
+            bool weaponActive = BoresightAimHelper.HasActiveWeaponStation(aircraft);
+            bool combatAimActive = OrbitRuntimeFlags.CombatFollowActive && weaponActive;
+
+            if (combatAimActive)
+                UpdateCombatEngage(state, !IsSustainedManualOverride(), aircraft, dt);
+
+            if (IsSustainedManualOverride())
             {
-                OrbitCombatRotationHelper.LogBoresightSkip(
-                    OrbitInputCache.SustainedManualInput ? "sustained_axis" : "pan_tilt_deviation");
+                OrbitCombatRotationHelper.LogBoresightSkip("sustained_axis");
 
                 OrbitHeightController.Reset(state);
                 OrbitVisibilityHelper.Reset(state);
-                OrbitRotationComposer.SyncFromCamera(state, cam.transform.rotation);
+                OrbitPresentComposer.SyncFromCamera(state, cam.transform.position, cam.transform.rotation);
                 InvalidateBoresightLatch(state, aircraft);
                 return;
             }
 
-            Quaternion vanillaRotation = cam.transform.rotation;
-            float absPitchRate = Mathf.Abs(state.Framing.LastPitchRate);
-
-            if (OrbitRuntimeFlags.CombatFollowActive)
-            {
-                OrbitRotationComposer.Tick(
-                    cam,
-                    state,
-                    aircraft,
-                    body,
-                    vanillaRotation,
-                    absPitchRate,
-                    dt,
-                    combatFollowActive: true);
-            }
-            else
-            {
-                OrbitRotationComposer.SyncFromCamera(state, vanillaRotation);
-            }
-
-            float targetVerticalMeters = OrbitHeightController.ComputeTargetVerticalMeters(
+            float framingWeight = combatAimActive ? state.GunWeight : 0f;
+            Quaternion targetRotation = combatAimActive
+                ? OrbitRotationComposer.ComputeTargetRotation(aircraft, body, vanillaRotation)
+                : vanillaRotation;
+            Vector3 targetPosition = OrbitHeightController.ComputeTargetPosition(
                 cam,
                 state.Framing,
                 body,
+                vanillaOrbitPos,
                 needFraming,
-                state.GunWeight,
+                framingWeight,
+                angularRateDeg,
                 dt);
 
-            OrbitHeightController.Apply(
+            OrbitPresentComposer.Present(
                 cam,
                 state,
-                vanillaOrbitPos,
-                targetVerticalMeters,
-                absPitchRate,
+                aircraft,
+                targetRotation,
+                targetPosition,
+                angularRateDeg,
                 dt);
         }
 
@@ -253,32 +254,45 @@ namespace NOLoader.SmoothCamera.Services
                 || Mathf.Abs(tilt - defaultTilt) > ManualPanEpsilon;
         }
 
-        private static void UpdateGunTransition(OrbitState state, bool gunSelected, float dt)
+        /// <summary>Exact gun/VPU engage ramp — keyed on any active weapon station, not gun flag.</summary>
+        private static void UpdateCombatEngage(OrbitState state, bool weaponEngaged, Aircraft aircraft, float dt)
         {
-            if (gunSelected && !state.WasGunSelected)
+            int stationNumber = aircraft.weaponManager?.currentWeaponStation?.Number ?? -1;
+            if (stationNumber != state.LastWeaponStationNumber)
+            {
+                state.LastWeaponStationNumber = stationNumber;
                 state.GunStableFrames = 0;
-            else if (gunSelected)
+                state.WasGunSelected = false;
+            }
+
+            if (weaponEngaged && !state.WasGunSelected)
+                state.GunStableFrames = 0;
+            else if (weaponEngaged)
                 state.GunStableFrames++;
-            else if (!gunSelected && state.WasGunSelected)
+            else if (!weaponEngaged && state.WasGunSelected)
             {
                 state.ReleaseLockUntil = Time.unscaledTime + SmoothCameraConfigCache.CombatReleaseLockoutSeconds;
                 state.GunStableFrames = 0;
             }
-            else if (!gunSelected)
+            else if (!weaponEngaged)
                 state.GunStableFrames = 0;
 
-            state.WasGunSelected = gunSelected;
+            state.WasGunSelected = weaponEngaged;
 
             bool releaseLocked = Time.unscaledTime < state.ReleaseLockUntil;
-            bool gunReady = gunSelected
+            bool combatReady = weaponEngaged
                 && !releaseLocked
                 && state.GunStableFrames >= SmoothCameraConfigCache.GunEngageStableFrames;
 
-            float targetGunWeight = gunReady ? 1f : 0f;
-            state.GunWeight = Mathf.MoveTowards(
-                state.GunWeight,
-                targetGunWeight,
-                SmoothCameraConfigCache.GunWeightBlendRate * dt);
+            if (combatReady)
+                state.GunWeight = 1f;
+            else
+            {
+                state.GunWeight = Mathf.MoveTowards(
+                    state.GunWeight,
+                    0f,
+                    SmoothCameraConfigCache.GunWeightBlendRate * dt);
+            }
         }
 
         private static OrbitState GetState(Unit unit)

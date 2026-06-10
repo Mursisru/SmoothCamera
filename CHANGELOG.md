@@ -1,5 +1,22 @@
 # Changelog
 
+## Pre-release 1.0.0-pr5 — NOLoader R90 (2026-06-10)
+
+**Branch:** `prerelease/noloader-r90` · **Build:** `1.0.0 Build PR-R2SP90` (NOLoader core: `0.1.0 Build RDY1R90`)
+
+### NOLoader.SmoothCamera (R87–R90 unified VPU + wideband smooth)
+
+- **R87:** single VPU mode for all weapon stations (no gun/boresight split)
+- **R88–R89:** low-speed + maneuver transient filters
+- **R90:** two wideband smoothers (`OrbitWidebandSmoother` + `OrbitPresentComposer`) — rotation + full position; overload jitter fixed
+- Config: `OrbitRotationSmoothHz`, `OrbitPresentSmoothHz`, `OrbitSignalSmoothHz`
+
+### Asset
+
+- **SmoothCamera-NOLoader-1.0.0-pr5.zip** — extract into `NOLoader/mods/SmoothCamera/` (requires NOLoader RDYTU core)
+
+---
+
 ## Pre-release 1.0.0-pr4 — NOLoader R84 (2026-06-10)
 
 **Branch:** `prerelease/noloader-r84` · **Build:** `1.0.0 Build PR-R2SP84` (NOLoader core: `0.1.0 Build RDY1R84`)

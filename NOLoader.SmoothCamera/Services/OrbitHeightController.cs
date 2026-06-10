@@ -2,27 +2,22 @@ using UnityEngine;
 
 namespace NOLoader.SmoothCamera.Services
 {
-    /// <summary>
-    /// World-Y scalar offset on vanilla orbit position. No Vector3 smooth — no lateral leakage.
-    /// </summary>
+    /// <summary>Builds target world position; presentation smoothing is in OrbitPresentComposer.</summary>
     internal static class OrbitHeightController
     {
-        private const float VanillaSnapThresholdMeters = 2.5f;
-        private const float SnapCatchUpRateMul = 3f;
-
         internal static void Reset(OrbitState state)
         {
-            state.SmoothedVerticalMeters = 0f;
-            state.HeightOffsetInitialized = false;
-            state.LastVanillaOrbitPos = Vector3.zero;
+            state.PositionInitialized = false;
         }
 
-        internal static float ComputeTargetVerticalMeters(
+        internal static Vector3 ComputeTargetPosition(
             CameraStateManager cam,
             OrbitFramingState framing,
             Transform body,
+            Vector3 vanillaOrbitPos,
             bool needFraming,
             float gunWeight,
+            float angularRateDeg,
             float dt)
         {
             float baseMeters = 0f;
@@ -31,47 +26,11 @@ namespace NOLoader.SmoothCamera.Services
 
             float framingMeters = 0f;
             if (needFraming && body != null && framing.PitchInitialized)
-                framingMeters = OrbitFramingSignal.ComputeFramingMeters(framing, gunWeight, body, dt);
+                framingMeters = OrbitFramingSignal.ComputeFramingMeters(
+                    framing, gunWeight, body, angularRateDeg, dt);
 
             OrbitFramingHelper.PublishFramingOffset(Vector3.up * framingMeters);
-            return baseMeters + framingMeters;
-        }
-
-        internal static void Apply(
-            CameraStateManager cam,
-            OrbitState state,
-            Vector3 vanillaOrbitPos,
-            float targetMeters,
-            float pitchRateDeg,
-            float dt)
-        {
-            if (!state.HeightOffsetInitialized)
-            {
-                state.SmoothedVerticalMeters = targetMeters;
-                state.HeightOffsetInitialized = true;
-                state.LastVanillaOrbitPos = vanillaOrbitPos;
-                cam.transform.position = vanillaOrbitPos + Vector3.up * state.SmoothedVerticalMeters;
-                return;
-            }
-
-            float snapDelta = (vanillaOrbitPos - state.LastVanillaOrbitPos).magnitude;
-            float rate = Mathf.Max(0.5f, SmoothCameraConfigCache.OrbitVerticalFollowRate);
-            rate *= ComputeManeuverFollowBoost(pitchRateDeg);
-
-            if (snapDelta > VanillaSnapThresholdMeters)
-                rate *= SnapCatchUpRateMul;
-
-            float stableDt = OrbitFramingHelper.StableDeltaTime(dt);
-            float t = 1f - Mathf.Exp(-rate * stableDt);
-            state.SmoothedVerticalMeters += (targetMeters - state.SmoothedVerticalMeters) * t;
-
-            state.LastVanillaOrbitPos = vanillaOrbitPos;
-            cam.transform.position = vanillaOrbitPos + Vector3.up * state.SmoothedVerticalMeters;
-        }
-
-        private static float ComputeManeuverFollowBoost(float absPitchRateDeg)
-        {
-            return Mathf.Lerp(1f, 2.4f, Mathf.Clamp01(absPitchRateDeg / 40f));
+            return vanillaOrbitPos + Vector3.up * (baseMeters + framingMeters);
         }
     }
 }

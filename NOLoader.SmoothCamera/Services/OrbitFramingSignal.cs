@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace NOLoader.SmoothCamera.Services
 {
-    /// <summary>Pitch framing signal — instant drive, light smooth before meters.</summary>
+    /// <summary>Pitch framing signal — raw drive, one wideband smooth, then meters.</summary>
     internal static class OrbitFramingSignal
     {
         private const float VerticalOffsetFraction = 0.97f;
@@ -15,34 +15,29 @@ namespace NOLoader.SmoothCamera.Services
         private const float CrossingZeroPitchDegrees = 14f;
         private const float CrossingZeroRateDegrees = 18f;
 
-        internal static float ComputeFramingMeters(OrbitFramingState state, float gunWeight, Transform body, float dt)
+        internal static float ComputeFramingMeters(
+            OrbitFramingState state,
+            float gunWeight,
+            Transform body,
+            float angularRateDeg,
+            float dt)
         {
             float rawDrive = ComputeRawFramingDrive(state, body, gunWeight);
-            float drive = SmoothFramingDrive(state, rawDrive, dt);
+            float signalHz = OrbitWidebandSmoother.SignalHz(angularRateDeg);
+            float drive = OrbitWidebandSmoother.SmoothFloat(
+                ref state.SmoothedFramingDrive,
+                ref state.FramingDriveInitialized,
+                rawDrive,
+                signalHz,
+                dt);
+
+            state.LastFramingDrive = drive;
+            OrbitFramingHelper.PublishDrive(drive);
 
             if (Mathf.Abs(drive) <= 0.0005f || state.SmoothedOrbitDistance < 0.5f)
                 return 0f;
 
             return -drive * state.SmoothedOrbitDistance * VerticalOffsetFraction;
-        }
-
-        private static float SmoothFramingDrive(OrbitFramingState state, float rawDrive, float dt)
-        {
-            if (!state.FramingDriveInitialized)
-            {
-                state.SmoothedFramingDrive = rawDrive;
-                state.FramingDriveInitialized = true;
-            }
-            else
-            {
-                float rate = Mathf.Max(1f, SmoothCameraConfigCache.OrbitFramingDriveSmoothHz);
-                float t = 1f - Mathf.Exp(-rate * OrbitFramingHelper.StableDeltaTime(dt));
-                state.SmoothedFramingDrive += (rawDrive - state.SmoothedFramingDrive) * t;
-            }
-
-            state.LastFramingDrive = state.SmoothedFramingDrive;
-            OrbitFramingHelper.PublishDrive(state.SmoothedFramingDrive);
-            return state.SmoothedFramingDrive;
         }
 
         private static float ComputeRawFramingDrive(OrbitFramingState state, Transform body, float gunWeight)

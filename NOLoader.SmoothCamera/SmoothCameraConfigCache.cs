@@ -48,6 +48,11 @@ namespace NOLoader.SmoothCamera
         internal static float OrbitVerticalFollowRate = 9f;
         internal static float OrbitVerticalMaxStepMps = 14f;
         internal static float OrbitFramingDriveSmoothHz = 14f;
+        internal static float OrbitRotationSmoothHz = 20f;
+        internal static float OrbitPresentSmoothHz = 14f;
+        internal static float OrbitSignalSmoothHz = 10f;
+        internal static float OrbitLowSpeedSmoothStart = 18f;
+        internal static float OrbitLowSpeedSmoothEnd = 48f;
         internal static bool OrbitDiagnosticInstantBoresight;
         internal static bool OrbitVisibilityFramingEnabled;
         internal static float OrbitVisibilityTargetScreenY = 0.42f;
@@ -119,6 +124,11 @@ namespace NOLoader.SmoothCamera
             OrbitVerticalMaxStepMps = cfg.GetFloat("Orbit", "OrbitVerticalMaxStepMps",
                 cfg.GetFloat("Orbit", "OrbitVerticalMaxSpeedMps", 14f));
             OrbitFramingDriveSmoothHz = cfg.GetFloat("Orbit", "OrbitFramingDriveSmoothHz", 14f);
+            OrbitRotationSmoothHz = cfg.GetFloat("Orbit", "OrbitRotationSmoothHz", 20f);
+            OrbitPresentSmoothHz = cfg.GetFloat("Orbit", "OrbitPresentSmoothHz", 14f);
+            OrbitSignalSmoothHz = cfg.GetFloat("Orbit", "OrbitSignalSmoothHz", 10f);
+            OrbitLowSpeedSmoothStart = cfg.GetFloat("Orbit", "OrbitLowSpeedSmoothStart", 18f);
+            OrbitLowSpeedSmoothEnd = cfg.GetFloat("Orbit", "OrbitLowSpeedSmoothEnd", 48f);
             OrbitDiagnosticInstantBoresight = cfg.GetBool("Orbit", "OrbitDiagnosticInstantBoresight", false);
             OrbitVisibilityFramingEnabled = cfg.GetBool("Orbit", "OrbitVisibilityFramingEnabled", false);
             OrbitVisibilityTargetScreenY = cfg.GetFloat("Orbit", "OrbitVisibilityTargetScreenY", 0.42f);

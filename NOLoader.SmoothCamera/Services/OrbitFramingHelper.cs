@@ -8,6 +8,7 @@ namespace NOLoader.SmoothCamera.Services
         internal bool PitchInitialized;
         internal float LastPitchRate;
         internal float SmoothedPitchRate;
+        internal bool PitchRateInitialized;
         internal float SmoothedOrbitDistance;
         internal bool OrbitDistanceInitialized;
         internal float SmoothedFramingDrive;
@@ -17,7 +18,6 @@ namespace NOLoader.SmoothCamera.Services
 
     internal static class OrbitFramingHelper
     {
-        private const float PitchRateFilterHz = 16f;
         private const float MaxIntegratorDeltaTime = 1f / 45f;
 
         internal static float MeasurePitchDegrees(Transform body)
@@ -29,7 +29,11 @@ namespace NOLoader.SmoothCamera.Services
         internal static float MeasureDeltaTime(float dt)
             => Mathf.Max(dt, 1e-4f);
 
-        internal static void RefreshPitchRate(OrbitFramingState state, Transform body, float dt)
+        internal static void RefreshPitchRate(
+            OrbitFramingState state,
+            Transform body,
+            float angularRateDeg,
+            float dt)
         {
             if (body == null)
                 return;
@@ -42,13 +46,18 @@ namespace NOLoader.SmoothCamera.Services
                 state.PitchInitialized = true;
                 state.LastPitchRate = 0f;
                 state.SmoothedPitchRate = 0f;
+                state.PitchRateInitialized = false;
                 return;
             }
 
             float rawRate = (pitch - state.PrevPitch) / measureDt;
-            float filterT = 1f - Mathf.Exp(-PitchRateFilterHz * measureDt);
-            state.SmoothedPitchRate += (rawRate - state.SmoothedPitchRate) * filterT;
-            state.LastPitchRate = state.SmoothedPitchRate;
+            float signalHz = OrbitWidebandSmoother.SignalHz(angularRateDeg);
+            state.LastPitchRate = OrbitWidebandSmoother.SmoothFloat(
+                ref state.SmoothedPitchRate,
+                ref state.PitchRateInitialized,
+                rawRate,
+                signalHz,
+                measureDt);
             state.PrevPitch = pitch;
         }
 
@@ -56,14 +65,20 @@ namespace NOLoader.SmoothCamera.Services
             OrbitFramingState state,
             CameraStateManager cam,
             Vector3 vanillaOrbitPos,
+            float angularRateDeg,
             float dt)
         {
             if (cam == null || cam.cameraPivot == null)
                 return;
 
-            // Instant — 5Hz smooth here caused ~0.2s periodic catch-up jerks during maneuvers.
-            state.SmoothedOrbitDistance = (vanillaOrbitPos - cam.cameraPivot.position).magnitude;
-            state.OrbitDistanceInitialized = true;
+            float rawDistance = (vanillaOrbitPos - cam.cameraPivot.position).magnitude;
+            float signalHz = OrbitWidebandSmoother.SignalHz(angularRateDeg);
+            state.SmoothedOrbitDistance = OrbitWidebandSmoother.SmoothFloat(
+                ref state.SmoothedOrbitDistance,
+                ref state.OrbitDistanceInitialized,
+                rawDistance,
+                signalHz,
+                dt);
         }
 
         internal static void Reset(OrbitFramingState state, Transform body)
@@ -72,6 +87,7 @@ namespace NOLoader.SmoothCamera.Services
             state.PitchInitialized = body != null;
             state.LastPitchRate = 0f;
             state.SmoothedPitchRate = 0f;
+            state.PitchRateInitialized = false;
             state.SmoothedOrbitDistance = 0f;
             state.OrbitDistanceInitialized = false;
             state.SmoothedFramingDrive = 0f;

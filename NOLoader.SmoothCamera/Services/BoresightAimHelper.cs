@@ -9,13 +9,12 @@ namespace NOLoader.SmoothCamera.Services
         private static int _cacheFrame = -1;
         private static Aircraft? _cacheAircraft;
         private static WeaponStation? _cacheStation;
-        private static bool _cacheGunSelected;
-        private static Vector3 _cacheGunDir;
+        private static Vector3 _cacheAimDir;
 
-        internal static bool IsGunSelected(Aircraft aircraft)
+        internal static bool HasActiveWeaponStation(Aircraft aircraft)
         {
             RefreshWeaponCache(aircraft);
-            return _cacheGunSelected;
+            return _cacheStation != null;
         }
 
         internal static Vector3 GetGunDirectionWorld(Aircraft aircraft)
@@ -24,15 +23,13 @@ namespace NOLoader.SmoothCamera.Services
                 return latched;
 
             RefreshWeaponCache(aircraft);
-            return _cacheGunDir;
+            return _cacheAimDir;
         }
 
         internal static Quaternion ComputeBoresightWorldRotation(Aircraft aircraft, Transform body)
-            => ComputeBoresightWorldRotation(aircraft, body, useLatch: true);
-
-        internal static Quaternion ComputeBoresightWorldRotation(Aircraft aircraft, Transform body, bool useLatch)
         {
-            Vector3 aimDir = useLatch ? GetGunDirectionWorld(aircraft) : GetFreshGunDirectionWorld(aircraft);
+            RefreshWeaponCache(aircraft);
+            Vector3 aimDir = _cacheAimDir;
             if (aimDir.sqrMagnitude < 1e-6f)
                 aimDir = body.forward;
 
@@ -57,18 +54,12 @@ namespace NOLoader.SmoothCamera.Services
             return Quaternion.LookRotation(aimDir, up);
         }
 
-        private static Vector3 GetFreshGunDirectionWorld(Aircraft aircraft)
-        {
-            RefreshWeaponCache(aircraft);
-            return _cacheGunDir;
-        }
-
         private static void RefreshWeaponCache(Aircraft aircraft)
         {
             if (aircraft == null)
             {
-                _cacheGunSelected = false;
-                _cacheGunDir = Vector3.forward;
+                _cacheStation = null;
+                _cacheAimDir = Vector3.forward;
                 return;
             }
 
@@ -79,12 +70,11 @@ namespace NOLoader.SmoothCamera.Services
             _cacheFrame = Time.frameCount;
             _cacheAircraft = aircraft;
             _cacheStation = station;
-            // Match CombatHUD: HUDBoresightState when WeaponInfo.boresight; guns also carry gun=true.
-            _cacheGunSelected = station?.WeaponInfo != null
-                && (station.WeaponInfo.gun || station.WeaponInfo.boresight);
-            _cacheGunDir = _cacheGunSelected
-                ? AverageWeaponForward(station!, aircraft.transform.forward)
-                : aircraft.transform.forward;
+
+            if (station?.Weapons != null && station.Weapons.Count > 0)
+                _cacheAimDir = AverageWeaponForward(station, aircraft.transform.forward);
+            else
+                _cacheAimDir = aircraft.transform.forward;
         }
 
         private static Vector3 AverageWeaponForward(WeaponStation station, Vector3 fallback)
