@@ -1,0 +1,29 @@
+{
+  "id": "com.at747.smoothcamera",
+  "guid": "b8e4a1c23d5f4e9a9b7c1a2e3f4d5c6b",
+  "version": "1.0.0",
+  "name": "Smooth Camera AutoCenter",
+  "assembly": "NOLoader.SmoothCamera.dll",
+  "entryType": "NOLoader.SmoothCamera.SmoothCameraMod",
+  "loadStage": "MainMenu",
+  "dependencies": [],
+  "patches": [
+    { "target": "CameraOrbitState::CameraMotion", "inject": "NOLoader.SmoothCamera.Patches::CameraOrbitMotionPrefix", "method": "Prefix", "expectedSignatureHash": "7AB91D3C8E15EC31" },
+    { "target": "CameraOrbitState::CameraMotion", "inject": "NOLoader.SmoothCamera.Patches::CameraOrbitMotionPostfix", "method": "Postfix", "expectedSignatureHash": "7AB91D3C8E15EC31" },
+    { "target": "CameraOrbitState::Inputs", "inject": "NOLoader.SmoothCamera.Patches::CameraOrbitInputsPostfix", "method": "Postfix", "expectedSignatureHash": "8F908B2ABDBD47DE" },
+    { "target": "CameraOrbitState::EnterState", "inject": "NOLoader.SmoothCamera.Patches::CameraOrbitEnterPostfix", "method": "Postfix", "expectedSignatureHash": "57B23DC5035C45CE" },
+    { "target": "CameraOrbitState::LeaveState", "inject": "NOLoader.SmoothCamera.Patches::CameraOrbitLeavePostfix", "method": "Postfix", "expectedSignatureHash": "44A68B71F8059408" },
+    { "target": "CameraChaseState::CheckHUD", "inject": "NOLoader.SmoothCamera.Patches::CameraChaseCheckHudPrefix", "method": "Prefix", "expectedSignatureHash": "4DDB7D232002DE61" },
+    { "target": "CameraTVState::UpdateState", "inject": "NOLoader.SmoothCamera.Patches::CameraTvUpdatePostfix", "method": "Postfix", "expectedSignatureHash": "AA0663B575906D6D" },
+    { "target": "CameraTVState::LeaveState", "inject": "NOLoader.SmoothCamera.Patches::CameraTvLeavePostfix", "method": "Postfix", "expectedSignatureHash": "DF288C0B379E9255" },
+    { "target": "CameraCockpitState::EnterState", "inject": "NOLoader.SmoothCamera.Patches::CameraCockpitEnterPrefix", "method": "Prefix", "expectedSignatureHash": "5AF61BFBB037CD58" },
+    { "target": "CameraCockpitState::LeaveState", "inject": "NOLoader.SmoothCamera.Patches::CameraCockpitLeavePostfix", "method": "Postfix", "expectedSignatureHash": "48A37EAF9857153F" },
+    { "target": "CameraStateManager::SwitchState", "inject": "NOLoader.SmoothCamera.Patches::CameraStateManagerSwitchPrefix", "method": "Prefix", "expectedSignatureHash": "8584D41A51D3E98E" },
+    { "target": "CameraStateManager::SwitchState", "inject": "NOLoader.SmoothCamera.Patches::CameraStateManagerSwitchPostfix", "method": "Postfix", "expectedSignatureHash": "8584D41A51D3E98E" },
+    { "target": "CameraStateManager::SetFollowingUnit", "inject": "NOLoader.SmoothCamera.Patches::CameraStateManagerFollowingPostfix", "method": "Postfix", "expectedSignatureHash": "AA80154D0BEEE8CE" },
+    { "target": "DynamicMap::Minimize", "inject": "NOLoader.SmoothCamera.Patches::DynamicMapMinimizePostfix", "method": "Postfix", "expectedSignatureHash": "57FBFE19FE4C90E6" },
+    { "target": "GLOC::SimulateGLOC", "inject": "NOLoader.SmoothCamera.Patches::GlocSimulateExternalPostfix", "method": "Postfix", "expectedSignatureHash": "52200FE2534A450B" },
+    { "target": "GLOC::GLOC_OnSwitchCamera", "inject": "NOLoader.SmoothCamera.Patches::GlocSwitchCameraPrefixSkip", "method": "PrefixSkip", "expectedSignatureHash": "7FB4FC4EF7EBA2FF" },
+    { "target": "HUDBoresightState::UpdateWeaponDisplay", "inject": "NOLoader.SmoothCamera.Patches::HudBoresightReticlePostfix", "method": "Postfix", "expectedSignatureHash": "A8E9EA7F72FEDFF0" }
+  ]
+}

@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.0] - 2026-06-30
+
+### Changed
+- Documentation refresh: Developer header, badges, GitHub Alerts, Keywords, gitignore hygiene.
+
+
 ## 1.0.0 (release)
 
 - Orbit combat camera: boresight follow (smooth cruise, stiff VPU), dynamic pitch height framing, HUD reticle compensation.

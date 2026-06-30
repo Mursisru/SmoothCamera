@@ -3,3 +3,12 @@
 **/_video_frames/
 *.user
 Directory.Build.user.props
+.vs/
+libs/
+Directory.Build.props
+.cursorrules
+.cursor/
+ffmpeg.exe
+local_build_scripts/
+_buildroot/
+.debug/
