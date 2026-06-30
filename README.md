@@ -14,8 +14,20 @@ Multi-mode smooth external camera for **[Nuclear Option](https://store.steampowe
 
 ---
 
+## Critical warnings
+
+> [!IMPORTANT]
+> **BepInEx 5 (x64) required** - install [BepInEx](https://docs.bepinex.dev/articles/user_guide/installation/index.html) before this mod.
+
+> [!WARNING]
+> **Remove legacy SmoothCenter plugins** - delete `SmaathThirdPersonCamera.dll` and `com.alex.smoothcenter`; both hook the same orbit camera pipeline and will conflict.
+
+> [!TIP]
+> **Configuration Manager recommended** for in-game tuning of `com.at747.smoothcamera.cfg`.
+
 ## Table of contents
 
+- [Critical warnings](#critical-warnings)
 - [Features](#features)
 - [Requirements](#requirements)
 - [Install](#install)
@@ -24,8 +36,6 @@ Multi-mode smooth external camera for **[Nuclear Option](https://store.steampowe
 - [Build](#build)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
-
----
 
 ## Features
 
