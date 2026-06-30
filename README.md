@@ -7,11 +7,6 @@
 [![Version](https://img.shields.io/badge/Version-1.0.0-green)](https://github.com/Mursisru/SmoothCamera/releases/tag/v1.0.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://github.com/Mursisru/SmoothCamera/blob/main/LICENSE)
 
-Multi-mode smooth external camera for **[Nuclear Option](https://store.steampowered.com/app/2168680/Nuclear_Option/)** (BepInEx 5). Replaces legacy `com.alex.smoothcenter` / `SmaathThirdPersonCamera.dll`.
-
-**Plugin GUID:** `com.at747.smoothcamera`  
-**Version:** `1.0.0` (BepInEx semver) · dev build string in `AppVersion.DisplayVersion`
-
 ---
 
 ## Critical warnings
@@ -24,6 +19,11 @@ Multi-mode smooth external camera for **[Nuclear Option](https://store.steampowe
 
 > [!TIP]
 > **Configuration Manager recommended** for in-game tuning of `com.at747.smoothcamera.cfg`.
+
+Multi-mode smooth external camera for **[Nuclear Option](https://store.steampowered.com/app/2168680/Nuclear_Option/)** (BepInEx 5). Replaces legacy `com.alex.smoothcenter` / `SmaathThirdPersonCamera.dll`.
+
+**Plugin GUID:** `com.at747.smoothcamera`  
+**Version:** `1.0.0` (BepInEx semver) · dev build string in `AppVersion.DisplayVersion`
 
 ## Table of contents
 
